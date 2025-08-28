@@ -15,6 +15,13 @@ db = SQLAlchemy(app)
 # --- MODELO DE BASE DE DATOS ---
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    nombres = db.Column(db.String(100), nullable=False)
+    apellidos = db.Column(db.String(100), nullable=False)
+    fecha_nacimiento = db.Column(db.String(20), nullable=False)
+    area = db.Column(db.String(100), nullable=False)
+    departamento = db.Column(db.String(100), nullable=False)
+    cargo = db.Column(db.String(100), nullable=False)
+    correo = db.Column(db.String(120), unique=True, nullable=False)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
 
@@ -36,14 +43,36 @@ def home():
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
+        # Recopilar todos los datos del formulario
+        nombres = request.form['nombres']
+        apellidos = request.form['apellidos']
+        fecha_nacimiento = request.form['fecha_nacimiento']
+        area = request.form['area']
+        departamento = request.form['departamento']
+        cargo = request.form['cargo']
+        correo = request.form['correo']
         username = request.form['username']
         password = request.form['password']
 
+        # Verificar si el nombre de usuario o el correo ya existen
         if User.query.filter_by(username=username).first():
             flash('El nombre de usuario ya existe.', 'error')
             return redirect(url_for('register'))
+        if User.query.filter_by(correo=correo).first():
+            flash('La dirección de correo electrónico ya está en uso.', 'error')
+            return redirect(url_for('register'))
 
-        new_user = User(username=username)
+        # Crear nueva instancia de usuario con todos los datos
+        new_user = User(
+            nombres=nombres,
+            apellidos=apellidos,
+            fecha_nacimiento=fecha_nacimiento,
+            area=area,
+            departamento=departamento,
+            cargo=cargo,
+            correo=correo,
+            username=username
+        )
         new_user.set_password(password)
         db.session.add(new_user)
         db.session.commit()
