@@ -64,7 +64,7 @@ class Checkin(db.Model):
     longitude = db.Column(db.Float, nullable=False)
     photo_filename = db.Column(db.String(200), nullable=False)
     status = db.Column(db.String(50), nullable=False)
-    tipo = db.Column(db.String(50), nullable=False, default='Ingreso') # Ingreso, Almuerzo, Salida
+    tipo = db.Column(db.String(50), nullable=False, default='Ingreso') # Ingreso, Inicio Almuerzo, Fin Almuerzo, Salida
 
     @property
     def timestamp_peru(self):
@@ -83,6 +83,8 @@ class Horario(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     hora_entrada = db.Column(db.Time, nullable=False, default=datetime.time(8, 0))
     hora_salida = db.Column(db.Time, nullable=False, default=datetime.time(18, 0))
+    hora_inicio_almuerzo = db.Column(db.Time, nullable=False, default=datetime.time(13, 0))
+    hora_fin_almuerzo = db.Column(db.Time, nullable=False, default=datetime.time(15, 59))
 
 class DiaDescanso(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -165,14 +167,11 @@ def dashboard():
     
     user = User.query.get(session['user_id'])
     
-    # Obtener la fecha actual en la zona horaria de Perú
     peru_tz = pytz.timezone('America/Lima')
     now_peru = datetime.datetime.now(peru_tz)
     today_peru = now_peru.date()
     
     # --- CÁLCULO DE ESTADÍSTICAS ---
-    
-    # 1. Días puntuales y tardanzas del mes actual
     primer_dia_mes = today_peru.replace(day=1)
     checkins_mes = Checkin.query.filter(
         Checkin.user_id == user.id,
@@ -188,14 +187,9 @@ def dashboard():
         elif checkin.status == 'Tardanza':
             dias_tarde += 1
 
-    # 2. Días con almuerzo extendido
+    # (Lógica a implementar para almuerzo extendido)
     dias_almuerzo_extendido = 0
-    # (Lógica a implementar: requiere registrar inicio y fin de almuerzo)
 
-    # 3. Días no marcados
-    # (Lógica a implementar: requiere comparar con días laborables esperados)
-
-    # 4. Horas extras del mes
     horas_extras_mes = db.session.query(db.func.sum(HorasExtras.horas)).filter(
         HorasExtras.user_id == user.id,
         db.func.strftime('%Y-%m', HorasExtras.fecha) == today_peru.strftime('%Y-%m')
@@ -203,24 +197,21 @@ def dashboard():
 
     # --- ESTADO ACTUAL DE MARCACIÓN ---
     checkin_ingreso_hoy = Checkin.query.filter_by(user_id=user.id, tipo='Ingreso').filter(db.func.date(Checkin.timestamp_utc) == today_peru).first()
-    checkin_almuerzo_hoy = Checkin.query.filter_by(user_id=user.id, tipo='Almuerzo').filter(db.func.date(Checkin.timestamp_utc) == today_peru).order_by(Checkin.timestamp_utc.desc()).first()
+    checkin_inicio_almuerzo_hoy = Checkin.query.filter_by(user_id=user.id, tipo='Inicio Almuerzo').filter(db.func.date(Checkin.timestamp_utc) == today_peru).first()
+    checkin_fin_almuerzo_hoy = Checkin.query.filter_by(user_id=user.id, tipo='Fin Almuerzo').filter(db.func.date(Checkin.timestamp_utc) == today_peru).first()
     checkin_salida_hoy = Checkin.query.filter_by(user_id=user.id, tipo='Salida').filter(db.func.date(Checkin.timestamp_utc) == today_peru).first()
 
     proximo_tipo_marcacion = 'Ingreso'
     if checkin_ingreso_hoy:
-        proximo_tipo_marcacion = 'Almuerzo'
-    if checkin_almuerzo_hoy:
-        # Si la última marcación de almuerzo fue hace más de 1h, el próximo es Salida
-        if (now_peru - checkin_almuerzo_hoy.timestamp_peru).total_seconds() > 3600:
-             proximo_tipo_marcacion = 'Salida'
-        else:
-             proximo_tipo_marcacion = 'Almuerzo' # Para marcar el fin
+        proximo_tipo_marcacion = 'Inicio Almuerzo'
+    if checkin_inicio_almuerzo_hoy:
+        proximo_tipo_marcacion = 'Fin Almuerzo'
+    if checkin_fin_almuerzo_hoy:
+        proximo_tipo_marcacion = 'Salida'
     if checkin_salida_hoy:
         proximo_tipo_marcacion = 'Finalizado'
 
-
     checkins_today = Checkin.query.filter(Checkin.user_id == user.id, db.func.date(Checkin.timestamp_utc) == today_peru).all()
-
 
     return render_template(
         'dashboard.html', 
@@ -243,32 +234,37 @@ def checkin():
     lat = data.get('lat')
     lon = data.get('lon')
     img_data_url = data.get('img')
-    tipo_marcacion = data.get('tipo') # 'Ingreso', 'Almuerzo', 'Salida'
+    tipo_marcacion = data.get('tipo')
 
     if not all([lat, lon, img_data_url, tipo_marcacion]):
         return jsonify({'status': 'error', 'message': 'Faltan datos'}), 400
 
-    # --- LÓGICA DE MARCACIÓN ---
     peru_tz = pytz.timezone('America/Lima')
     timestamp_utc = datetime.datetime.utcnow()
     now_peru = timestamp_utc.replace(tzinfo=pytz.utc).astimezone(peru_tz)
     
     status = ''
+    user = User.query.get(session['user_id'])
     
     if tipo_marcacion == 'Ingreso':
-        hora_limite_puntual = now_peru.replace(hour=8, minute=5, second=0, microsecond=0)
-        if now_peru <= hora_limite_puntual:
+        hora_limite_puntual = now_peru.replace(hour=8, minute=5, second=59, microsecond=999999)
+        if now_peru.time() <= hora_limite_puntual.time():
             status = 'A Tiempo'
         else:
             status = 'Tardanza'
     
-    elif tipo_marcacion == 'Almuerzo':
-        # Se podría añadir lógica para controlar la duración del almuerzo
-        status = 'Almuerzo'
+    elif tipo_marcacion == 'Inicio Almuerzo':
+        status = 'Inicio Almuerzo'
+        # Validar que el inicio del almuerzo esté dentro del rango permitido
+        if not (user.horario.hora_inicio_almuerzo <= now_peru.time() <= user.horario.hora_fin_almuerzo):
+            status = 'Inicio Almuerzo (Fuera de Horario)'
+
+    elif tipo_marcacion == 'Fin Almuerzo':
+        status = 'Fin Almuerzo'
 
     elif tipo_marcacion == 'Salida':
-        hora_minima_salida = now_peru.replace(hour=18, minute=0, second=0, microsecond=0)
-        if now_peru >= hora_minima_salida:
+        hora_minima_salida = user.horario.hora_salida
+        if now_peru.time() >= hora_minima_salida:
             status = 'Salida'
         else:
             status = 'Salida (Antes de hora)'
@@ -329,7 +325,6 @@ def marcar_horas_extras():
     peru_tz = pytz.timezone('America/Lima')
     today_peru = datetime.datetime.now(peru_tz).date()
 
-    # Opcional: Validar que no se registren horas extras en el mismo día dos veces
     existing_record = HorasExtras.query.filter_by(user_id=session['user_id'], fecha=today_peru).first()
     if existing_record:
         existing_record.horas += horas
@@ -361,7 +356,38 @@ def logout():
 @admin_required
 def admin_dashboard():
     users = User.query.all()
-    return render_template('admin/dashboard.html', users=users)
+    summary_data = []
+    today = datetime.date.today()
+    start_of_month = today.replace(day=1)
+
+    for user in users:
+        total_lateness = Checkin.query.filter(
+            Checkin.user_id == user.id,
+            Checkin.status == 'Tardanza',
+            db.func.date(Checkin.timestamp_utc) >= start_of_month
+        ).count()
+
+        total_overtime = db.session.query(db.func.sum(HorasExtras.horas)).filter(
+            HorasExtras.user_id == user.id,
+            HorasExtras.fecha >= start_of_month
+        ).scalar() or 0
+
+        worked_days = db.session.query(db.func.date(Checkin.timestamp_utc)).filter(
+            Checkin.user_id == user.id,
+            db.func.date(Checkin.timestamp_utc) >= start_of_month
+        ).distinct().count()
+        
+        total_days_in_month = (today - start_of_month).days + 1
+        total_absences = total_days_in_month - worked_days
+
+        summary_data.append({
+            'user': user,
+            'total_lateness': total_lateness,
+            'total_overtime': round(total_overtime, 2),
+            'total_absences': total_absences
+        })
+
+    return render_template('admin/dashboard.html', users=users, summary_data=summary_data)
 
 @app.route('/admin/users')
 @admin_required
@@ -377,13 +403,11 @@ def admin_user_detail(user_id):
         action = request.form.get('action')
 
         if action == 'update_profile':
-            # Validar que el nuevo username no exista ya (si se cambió)
             new_username = request.form['username']
             if new_username != user.username and User.query.filter_by(username=new_username).first():
                 flash('Ese nombre de usuario ya está en uso.', 'error')
                 return redirect(url_for('admin_user_detail', user_id=user.id))
 
-            # Validar que el nuevo correo no exista ya (si se cambió)
             new_email = request.form['correo']
             if new_email != user.correo and User.query.filter_by(correo=new_email).first():
                 flash('Ese correo electrónico ya está en uso.', 'error')
@@ -412,11 +436,15 @@ def admin_user_detail(user_id):
         elif action == 'update_schedule':
             hora_entrada = request.form.get('hora_entrada')
             hora_salida = request.form.get('hora_salida')
-            if hora_entrada and hora_salida:
+            hora_inicio_almuerzo = request.form.get('hora_inicio_almuerzo')
+            hora_fin_almuerzo = request.form.get('hora_fin_almuerzo')
+            if hora_entrada and hora_salida and hora_inicio_almuerzo and hora_fin_almuerzo:
                 if not user.horario:
                     user.horario = Horario(user_id=user.id)
                 user.horario.hora_entrada = datetime.datetime.strptime(hora_entrada, '%H:%M').time()
                 user.horario.hora_salida = datetime.datetime.strptime(hora_salida, '%H:%M').time()
+                user.horario.hora_inicio_almuerzo = datetime.datetime.strptime(hora_inicio_almuerzo, '%H:%M').time()
+                user.horario.hora_fin_almuerzo = datetime.datetime.strptime(hora_fin_almuerzo, '%H:%M').time()
                 db.session.commit()
                 flash('Horario actualizado con éxito.', 'success')
 
@@ -431,8 +459,6 @@ def set_rest_days(user_id):
     data = request.get_json()
     fechas = data.get('fechas', [])
 
-    # Eliminar días de descanso anteriores para este mes y usuario
-    # (Se podría mejorar para solo añadir/quitar los cambiados)
     user.dias_descanso.delete()
 
     for fecha_str in fechas:
@@ -444,14 +470,97 @@ def set_rest_days(user_id):
     return jsonify({'status': 'success', 'message': 'Días de descanso actualizados.'})
 
 
+@app.route('/admin/report')
+@admin_required
+def admin_report():
+    user_id = request.args.get('user_id')
+    start_date_str = request.args.get('start_date')
+    end_date_str = request.args.get('end_date')
+
+    start_date = datetime.datetime.strptime(start_date_str, '%Y-%m-%d').date() if start_date_str else None
+    end_date = datetime.datetime.strptime(end_date_str, '%Y-%m-%d').date() if end_date_str else None
+
+    if not start_date or not end_date:
+        today = datetime.date.today()
+        start_date = today.replace(day=1)
+        end_date = (start_date + datetime.timedelta(days=31)).replace(day=1) - datetime.timedelta(days=1)
+
+    users_query = User.query
+    if user_id:
+        users_query = users_query.filter(User.id == user_id)
+    
+    users = users_query.all()
+    
+    report_data = []
+    dias_es = {
+        'Monday': 'Lunes', 'Tuesday': 'Martes', 'Wednesday': 'Miércoles',
+        'Thursday': 'Jueves', 'Friday': 'Viernes', 'Saturday': 'Sábado', 'Sunday': 'Domingo'
+    }
+    
+    for user in users:
+        user_data = {
+            'user': user,
+            'days': []
+        }
+        
+        current_date = start_date
+        while current_date <= end_date:
+            day_data = {
+                'date': current_date,
+                'dia_semana': dias_es[current_date.strftime('%A')],
+                'check_in': None,
+                'lunch_start': None,
+                'lunch_end': None,
+                'lunch_duration': None,
+                'check_out': None,
+                'overtime': None,
+                'absence': False,
+                'day_off': False
+            }
+
+            if DiaDescanso.query.filter_by(user_id=user.id, fecha=current_date).first():
+                day_data['day_off'] = True
+            else:
+                checkins_today = Checkin.query.filter(
+                    Checkin.user_id == user.id,
+                    db.func.date(Checkin.timestamp_utc) == current_date
+                ).order_by(Checkin.timestamp_utc).all()
+
+                if not checkins_today and current_date.weekday() < 5: # Asumir ausencia solo en días laborables
+                    day_data['absence'] = True
+                else:
+                    for checkin in checkins_today:
+                        if checkin.tipo == 'Ingreso':
+                            day_data['check_in'] = checkin
+                        elif checkin.tipo == 'Inicio Almuerzo':
+                            day_data['lunch_start'] = checkin
+                        elif checkin.tipo == 'Fin Almuerzo':
+                            day_data['lunch_end'] = checkin
+                        elif checkin.tipo == 'Salida':
+                            day_data['check_out'] = checkin
+                
+                    if day_data['lunch_start'] and day_data['lunch_end']:
+                        duration = day_data['lunch_end'].timestamp_utc - day_data['lunch_start'].timestamp_utc
+                        day_data['lunch_duration'] = str(duration).split('.')[0] # Formato HH:MM:SS
+
+                overtime = HorasExtras.query.filter_by(user_id=user.id, fecha=current_date).first()
+                if overtime:
+                    day_data['overtime'] = overtime.horas
+
+            user_data['days'].append(day_data)
+            current_date += datetime.timedelta(days=1)
+            
+        report_data.append(user_data)
+
+    return render_template('admin/report.html', report_data=report_data, start_date=start_date, end_date=end_date)
+
+
 # --- INICIAR LA APP Y CREAR LA BD ---
 def setup_database(app):
     with app.app_context():
         db.create_all()
         
-        # Comprobar si el usuario admin ya existe
         if User.query.filter_by(username='admin').first() is None:
-            # Crear usuario admin
             admin_user = User(
                 nombres='Admin', 
                 apellidos='User', 
@@ -466,9 +575,7 @@ def setup_database(app):
             admin_user.set_password('admin')
             db.session.add(admin_user)
 
-        # Comprobar si hay más de 1 usuario (el admin) para no volver a poblar
         if User.query.count() <= 1:
-            # Crear 5 usuarios de ejemplo
             users_data = [
                 { 'nombres': 'Carlos', 'apellidos': 'Gomez', 'area': 'Ventas', 'departamento': 'Retail', 'cargo': 'Vendedor' },
                 { 'nombres': 'Lucia', 'apellidos': 'Fernandez', 'area': 'Marketing', 'departamento': 'Digital', 'cargo': 'Community Manager' },
@@ -481,7 +588,6 @@ def setup_database(app):
                 username = f'{data["nombres"].lower()}{data["apellidos"].lower().replace(" ", "")}'
                 email = f'{username}@example.com'
                 
-                # Asegurarse de que el username y correo no existan
                 if User.query.filter_by(username=username).first() or User.query.filter_by(correo=email).first():
                     continue
 
@@ -500,10 +606,22 @@ def setup_database(app):
 
         db.session.commit()
 
-        # Asignar horarios por defecto a usuarios que no lo tengan
-        for user in User.query.filter(User.horario == None).all():
-            default_schedule = Horario(user_id=user.id)
-            db.session.add(default_schedule)
+        # Asignar o actualizar horarios para TODOS los usuarios
+        for user in User.query.all():
+            if user.horario:
+                user.horario.hora_entrada = datetime.time(8, 0)
+                user.horario.hora_salida = datetime.time(18, 0)
+                user.horario.hora_inicio_almuerzo = datetime.time(13, 0)
+                user.horario.hora_fin_almuerzo = datetime.time(15, 59)
+            else:
+                default_schedule = Horario(
+                    user_id=user.id,
+                    hora_entrada=datetime.time(8, 0),
+                    hora_salida=datetime.time(18, 0),
+                    hora_inicio_almuerzo=datetime.time(13, 0),
+                    hora_fin_almuerzo=datetime.time(15, 59)
+                )
+                db.session.add(default_schedule)
         db.session.commit()
 
 if __name__ == '__main__':

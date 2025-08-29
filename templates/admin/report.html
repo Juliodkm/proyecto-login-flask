@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Reporte de Asistencia</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; background-color: #f8f9fa; }
+        .header { background-color: #343a40; color: white; padding: 1rem; display: flex; justify-content: space-between; align-items: center; }
+        .header h1 { margin: 0; }
+        .header a { color: #f8f9fa; text-decoration: none; }
+        .container { padding: 2rem; }
+        .report-header { margin-bottom: 2rem; }
+        .user-report { margin-bottom: 2rem; background-color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 1.5rem; border-radius: 8px; }
+        .user-report h3 { margin-top: 0; border-bottom: 2px solid #e9ecef; padding-bottom: 0.5rem; }
+        .table-responsive { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 0.75rem; border: 1px solid #dee2e6; text-align: center; vertical-align: middle; }
+        th { background-color: #e9ecef; font-weight: 600; }
+        .status-tardanza { color: #dc3545; font-weight: bold; }
+        .status-a-tiempo { color: #28a745; }
+        .status-fuera-horario { color: #ffc107; }
+        .status-falta { background-color: #fff3cd; }
+        .status-descanso { background-color: #e2e3e5; color: #6c757d; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Reporte de Asistencia</h1>
+        <div>
+            <a href="{{ url_for('admin_dashboard') }}" style="margin-right: 1rem;">Volver al Dashboard</a>
+            <a href="{{ url_for('logout') }}">Cerrar Sesión</a>
+        </div>
+    </div>
+    <div class="container">
+        <div class="report-header">
+            <h2>Mostrando Reporte</h2>
+            <p><strong>Rango de Fechas:</strong> {{ start_date.strftime('%d/%m/%Y') }} - {{ end_date.strftime('%d/%m/%Y') }}</p>
+        </div>
+
+        {% for data in report_data %}
+        <div class="user-report">
+            <h3>{{ data.user.nombres }} {{ data.user.apellidos }} ({{ data.user.username }})</h3>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Día</th>
+                            <th>Ingreso</th>
+                            <th>Status Ingreso</th>
+                            <th>Inicio Almuerzo</th>
+                            <th>Fin Almuerzo</th>
+                            <th>Duración Almuerzo</th>
+                            <th>Salida</th>
+                            <th>Horas Extras</th>
+                            <th>Observaciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for day in data.days %}
+                        <tr class="{% if day.absence %}status-falta{% elif day.day_off %}status-descanso{% endif %}">
+                            <td>{{ day.date.strftime('%d/%m/%Y') }}</td>
+                            <td>{{ day.dia_semana }}</td>
+                            <td>{{ day.check_in.timestamp_peru.strftime('%H:%M:%S') if day.check_in else '-' }}</td>
+                            <td>
+                                {% if day.check_in %}
+                                    <span class="{% if day.check_in.status == 'Tardanza' %}status-tardanza{% else %}status-a-tiempo{% endif %}">
+                                        {{ day.check_in.status }}
+                                    </span>
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>{{ day.lunch_start.timestamp_peru.strftime('%H:%M:%S') if day.lunch_start else '-' }}</td>
+                            <td>{{ day.lunch_end.timestamp_peru.strftime('%H:%M:%S') if day.lunch_end else '-' }}</td>
+                            <td>{{ day.lunch_duration if day.lunch_duration else '-' }}</td>
+                            <td>{{ day.check_out.timestamp_peru.strftime('%H:%M:%S') if day.check_out else '-' }}</td>
+                            <td>{{ day.overtime if day.overtime is not none else '0' }}h</td>
+                            <td>
+                                {% if day.absence %}Falta{% endif %}
+                                {% if day.day_off %}Día de Descanso{% endif %}
+                                {% if day.lunch_start and day.lunch_start.status == 'Inicio Almuerzo (Fuera de Horario)' %}
+                                    <span class="status-fuera-horario">Almuerzo fuera de horario</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% else %}
+            <p>No se encontraron datos para los filtros seleccionados.</p>
+        {% endfor %}
+    </div>
+</body>
+</html>

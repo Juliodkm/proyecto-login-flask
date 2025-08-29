@@ -24,6 +24,34 @@
         <a href="{{ url_for('logout') }}">Cerrar Sesión</a>
     </div>
     <div class="container">
+        <div class="reports-section" style="margin-bottom: 2rem; padding: 1.5rem; background-color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <h2>Generar Reporte de Asistencia</h2>
+            <form action="{{ url_for('admin_report') }}" method="GET">
+                <div style="display: flex; gap: 1rem; align-items: center;">
+                    <div style="flex-grow: 1;">
+                        <label for="user_id" style="display: block; margin-bottom: .5rem;">Seleccionar Usuario:</label>
+                        <select name="user_id" id="user_id" style="width: 100%; padding: .5rem;">
+                            <option value="">Todos los usuarios</option>
+                            {% for user in users %}
+                                <option value="{{ user.id }}">{{ user.nombres }} {{ user.apellidos }} ({{ user.username }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label for="start_date" style="display: block; margin-bottom: .5rem;">Fecha Inicio:</label>
+                        <input type="date" id="start_date" name="start_date" style="padding: .5rem;">
+                    </div>
+                    <div>
+                        <label for="end_date" style="display: block; margin-bottom: .5rem;">Fecha Fin:</label>
+                        <input type="date" id="end_date" name="end_date" style="padding: .5rem;">
+                    </div>
+                    <div style="align-self: flex-end;">
+                        <button type="submit" style="padding: .6rem 1.2rem; background-color: #007bff; color: white; border: none; cursor: pointer;">Generar</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
         <h2>Usuarios Registrados</h2>
         <div class="table-responsive">
             <table>
@@ -58,6 +86,32 @@
                     {% endfor %}
                 </tbody>
             </table>
+        </div>
+
+        <div class="summary-section" style="margin-top: 2rem;">
+            <h2>Resumen Global de Asistencia (Mes Actual)</h2>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Total Tardanzas</th>
+                            <th>Total Horas Extras</th>
+                            <th>Total Faltas</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for data in summary_data %}
+                        <tr>
+                            <td>{{ data.user.nombres }} {{ data.user.apellidos }}</td>
+                            <td>{{ data.total_lateness }}</td>
+                            <td>{{ data.total_overtime }}h</td>
+                            <td>{{ data.total_absences }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </body>

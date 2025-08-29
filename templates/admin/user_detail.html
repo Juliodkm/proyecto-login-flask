@@ -117,6 +117,12 @@
                     <label for="hora_salida">Hora de Salida:</label>
                     <input type="time" id="hora_salida" name="hora_salida" value="{{ user.horario.hora_salida.strftime('%H:%M') if user.horario else '18:00' }}">
                     
+                    <label for="hora_inicio_almuerzo">Inicio Almuerzo:</label>
+                    <input type="time" id="hora_inicio_almuerzo" name="hora_inicio_almuerzo" value="{{ user.horario.hora_inicio_almuerzo.strftime('%H:%M') if user.horario else '12:00' }}">
+
+                    <label for="hora_fin_almuerzo">Fin Almuerzo:</label>
+                    <input type="time" id="hora_fin_almuerzo" name="hora_fin_almuerzo" value="{{ user.horario.hora_fin_almuerzo.strftime('%H:%M') if user.horario else '13:00' }}">
+
                     <button type="submit" class="btn btn-primary">Guardar Horario</button>
                 </form>
             </div>
