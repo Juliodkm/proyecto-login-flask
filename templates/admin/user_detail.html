@@ -5,51 +5,125 @@
     <title>Detalles de {{ user.username }}</title>
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.0/main.min.css" rel="stylesheet" />
     <style>
-        body { font-family: sans-serif; margin: 0; background: #f4f4f4; }
-        .header { background: #333; color: white; padding: 1rem; }
-        .container { padding: 1rem; display: flex; gap: 2rem; }
-        .main-content { flex-grow: 1; }
-        .sidebar { width: 300px; }
-        .card { background: white; padding: 1rem; border-radius: 5px; margin-bottom: 1rem; }
-        h2, h3 { margin-top: 0; }
-        label { display: block; margin-bottom: 0.5rem; }
-        input[type='time'], input[type='submit'] { width: 100%; padding: 0.5rem; margin-bottom: 1rem; }
-        input[type='submit'] { background: #007bff; color: white; border: none; cursor: pointer; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; background-color: #f8f9fa; }
+        .header { background-color: #343a40; color: white; padding: 1rem; display: flex; justify-content: space-between; align-items: center; }
+        .header h1 { margin: 0; }
+        .header a { color: #f8f9fa; text-decoration: none; }
+        .container { padding: 2rem; display: flex; flex-wrap: wrap; gap: 2rem; }
+        .main-content { flex: 2; min-width: 400px; }
+        .sidebar { flex: 1; min-width: 300px; }
+        .card { background-color: white; padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h2, h3 { margin-top: 0; border-bottom: 1px solid #dee2e6; padding-bottom: 0.5rem; margin-bottom: 1rem; }
+        label { display: block; margin-bottom: 0.5rem; font-weight: 500; }
+        input[type='text'], input[type='email'], input[type='password'], input[type='time'], select {
+            width: 100%;
+            padding: 0.5rem;
+            margin-bottom: 1rem;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+        }
+        .btn { 
+            display: inline-block;
+            padding: 0.75rem 1.25rem;
+            font-size: 1rem;
+            font-weight: 600;
+            text-align: center;
+            text-decoration: none;
+            border-radius: 5px;
+            cursor: pointer;
+            border: none;
+            transition: background-color 0.2s;
+        }
+        .btn-primary { background-color: #007bff; color: white; }
+        .btn-primary:hover { background-color: #0056b3; }
+        .btn-secondary { background-color: #6c757d; color: white; }
         #calendar { max-width: 1100px; margin: 20px auto; background: white; padding: 1rem; border-radius: 5px; }
+        .flash-messages { list-style: none; padding: 0; margin-bottom: 1rem; }
+        .flash-messages .success { background-color: #d4edda; color: #155724; padding: 0.75rem; border-radius: 4px; }
+        .flash-messages .error { background-color: #f8d7da; color: #721c24; padding: 0.75rem; border-radius: 4px; }
     </style>
 </head>
 <body>
     <div class="header">
         <h1>Gestionando a {{ user.username }}</h1>
-        <a href="{{ url_for('admin_dashboard') }}" style="color: white;">Volver al Dashboard</a>
+        <a href="{{ url_for('admin_dashboard') }}">Volver al Dashboard</a>
     </div>
 
     <div class="container">
         <div class="main-content">
             <div class="card">
-                <h3>Asignar Días de Descanso</h3>
-                <div id="calendar"></div>
-                <button id="save-rest-days">Guardar Días de Descanso</button>
+                <h3>Editar Datos del Usuario</h3>
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                  {% if messages %}
+                    <ul class=flash-messages>
+                    {% for category, message in messages %}
+                      <li class="{{ category }}">{{ message }}</li>
+                    {% endfor %}
+                    </ul>
+                  {% endif %}
+                {% endwith %}
+                <form method="POST">
+                    <input type="hidden" name="action" value="update_profile">
+                    <label for="nombres">Nombres:</label>
+                    <input type="text" id="nombres" name="nombres" value="{{ user.nombres }}" required>
+
+                    <label for="apellidos">Apellidos:</label>
+                    <input type="text" id="apellidos" name="apellidos" value="{{ user.apellidos }}" required>
+
+                    <label for="correo">Correo Electrónico:</label>
+                    <input type="email" id="correo" name="correo" value="{{ user.correo }}" required>
+
+                    <label for="username">Nombre de Usuario:</label>
+                    <input type="text" id="username" name="username" value="{{ user.username }}" required>
+                    
+                    <label for="area">Área:</label>
+                    <input type="text" id="area" name="area" value="{{ user.area }}" required>
+
+                    <label for="departamento">Departamento:</label>
+                    <input type="text" id="departamento" name="departamento" value="{{ user.departamento }}" required>
+
+                    <label for="cargo">Cargo:</label>
+                    <input type="text" id="cargo" name="cargo" value="{{ user.cargo }}" required>
+
+                    <label for="rol">Rol:</label>
+                    <select id="rol" name="rol">
+                        <option value="user" {% if user.rol == 'user' %}selected{% endif %}>User</option>
+                        <option value="admin" {% if user.rol == 'admin' %}selected{% endif %}>Admin</option>
+                    </select>
+
+                    <button type="submit" class="btn btn-primary">Actualizar Perfil</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h3>Cambiar Contraseña</h3>
+                <form method="POST">
+                    <input type="hidden" name="action" value="update_password">
+                    <label for="new_password">Nueva Contraseña:</label>
+                    <input type="password" id="new_password" name="new_password" required>
+                    <button type="submit" class="btn btn-primary">Cambiar Contraseña</button>
+                </form>
             </div>
         </div>
+
         <div class="sidebar">
-            <div class="card">
-                <h3>Información del Usuario</h3>
-                <p><strong>Nombre:</strong> {{ user.nombres }} {{ user.apellidos }}</p>
-                <p><strong>Correo:</strong> {{ user.correo }}</p>
-                <p><strong>Rol:</strong> {{ user.rol }}</p>
-            </div>
             <div class="card">
                 <h3>Asignar Horario</h3>
                 <form method="POST">
+                    <input type="hidden" name="action" value="update_schedule">
                     <label for="hora_entrada">Hora de Entrada:</label>
                     <input type="time" id="hora_entrada" name="hora_entrada" value="{{ user.horario.hora_entrada.strftime('%H:%M') if user.horario else '08:00' }}">
                     
                     <label for="hora_salida">Hora de Salida:</label>
                     <input type="time" id="hora_salida" name="hora_salida" value="{{ user.horario.hora_salida.strftime('%H:%M') if user.horario else '18:00' }}">
                     
-                    <input type="submit" value="Guardar Horario">
+                    <button type="submit" class="btn btn-primary">Guardar Horario</button>
                 </form>
+            </div>
+            <div class="card">
+                <h3>Asignar Días de Descanso</h3>
+                <div id="calendar"></div>
+                <button id="save-rest-days" class="btn btn-secondary" style="margin-top: 1rem;">Guardar Días de Descanso</button>
             </div>
         </div>
     </div>
@@ -60,7 +134,6 @@
         const calendarEl = document.getElementById('calendar');
         const selectedDates = new Set();
 
-        // Marcar los días de descanso ya guardados
         {% for dia in user.dias_descanso %}
         selectedDates.add('{{ dia.fecha.strftime("%Y-%m-%d") }}');
         {% endfor %}
@@ -72,7 +145,7 @@
             headerToolbar: {
                 left: 'prev,next today',
                 center: 'title',
-                right: 'dayGridMonth,timeGridWeek'
+                right: 'dayGridMonth'
             },
             dateClick: function(info) {
                 const dateStr = info.dateStr;
@@ -83,7 +156,7 @@
                     cell.style.backgroundColor = '';
                 } else {
                     selectedDates.add(dateStr);
-                    cell.style.backgroundColor = '#fca5a5'; // light red
+                    cell.style.backgroundColor = '#fca5a5';
                 }
             },
             dayCellDidMount: function(info) {
@@ -101,15 +174,13 @@
             try {
                 const response = await fetch("{{ url_for('set_rest_days', user_id=user.id) }}", {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ fechas: datesArray })
                 });
                 const result = await response.json();
                 alert(result.message);
                 if(result.status === 'success') {
-                    location.reload();
+                    // No es necesario recargar, el calendario ya está visualmente actualizado
                 }
             } catch (error) {
                 console.error('Error:', error);

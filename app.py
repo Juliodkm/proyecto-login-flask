@@ -374,16 +374,51 @@ def admin_users():
 def admin_user_detail(user_id):
     user = User.query.get_or_404(user_id)
     if request.method == 'POST':
-        # Actualizar horario
-        hora_entrada = request.form.get('hora_entrada')
-        hora_salida = request.form.get('hora_salida')
-        if hora_entrada and hora_salida:
-            if not user.horario:
-                user.horario = Horario()
-            user.horario.hora_entrada = datetime.datetime.strptime(hora_entrada, '%H:%M').time()
-            user.horario.hora_salida = datetime.datetime.strptime(hora_salida, '%H:%M').time()
+        action = request.form.get('action')
+
+        if action == 'update_profile':
+            # Validar que el nuevo username no exista ya (si se cambió)
+            new_username = request.form['username']
+            if new_username != user.username and User.query.filter_by(username=new_username).first():
+                flash('Ese nombre de usuario ya está en uso.', 'error')
+                return redirect(url_for('admin_user_detail', user_id=user.id))
+
+            # Validar que el nuevo correo no exista ya (si se cambió)
+            new_email = request.form['correo']
+            if new_email != user.correo and User.query.filter_by(correo=new_email).first():
+                flash('Ese correo electrónico ya está en uso.', 'error')
+                return redirect(url_for('admin_user_detail', user_id=user.id))
+
+            user.nombres = request.form['nombres']
+            user.apellidos = request.form['apellidos']
+            user.correo = new_email
+            user.username = new_username
+            user.area = request.form['area']
+            user.departamento = request.form['departamento']
+            user.cargo = request.form['cargo']
+            user.rol = request.form['rol']
             db.session.commit()
-            flash('Horario actualizado con éxito.', 'success')
+            flash('Perfil actualizado con éxito.', 'success')
+
+        elif action == 'update_password':
+            new_password = request.form.get('new_password')
+            if new_password:
+                user.set_password(new_password)
+                db.session.commit()
+                flash('Contraseña actualizada con éxito.', 'success')
+            else:
+                flash('La contraseña no puede estar vacía.', 'error')
+
+        elif action == 'update_schedule':
+            hora_entrada = request.form.get('hora_entrada')
+            hora_salida = request.form.get('hora_salida')
+            if hora_entrada and hora_salida:
+                if not user.horario:
+                    user.horario = Horario(user_id=user.id)
+                user.horario.hora_entrada = datetime.datetime.strptime(hora_entrada, '%H:%M').time()
+                user.horario.hora_salida = datetime.datetime.strptime(hora_salida, '%H:%M').time()
+                db.session.commit()
+                flash('Horario actualizado con éxito.', 'success')
 
         return redirect(url_for('admin_user_detail', user_id=user.id))
     

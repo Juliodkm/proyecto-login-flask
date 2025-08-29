@@ -4,48 +4,61 @@
     <meta charset="UTF-8">
     <title>Admin Dashboard</title>
     <style>
-        body { font-family: sans-serif; margin: 0; background: #f4f4f4; }
-        .header { background: #333; color: white; padding: 1rem; }
-        .container { padding: 1rem; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 0.5rem; border-bottom: 1px solid #ddd; }
-        th { background: #f2f2f2; }
-        a { color: #007bff; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; background-color: #f8f9fa; }
+        .header { background-color: #343a40; color: white; padding: 1rem; display: flex; justify-content: space-between; align-items: center; }
+        .header h1 { margin: 0; }
+        .header a { color: #f8f9fa; text-decoration: none; }
+        .container { padding: 2rem; }
+        .table-responsive { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; background-color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        th, td { padding: 0.75rem; border-bottom: 1px solid #dee2e6; text-align: left; }
+        th { background-color: #e9ecef; }
+        tbody tr:hover { background-color: #f1f3f5; }
+        .actions a { color: #007bff; margin-right: 10px; }
+        .actions a:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
     <div class="header">
         <h1>Admin Dashboard</h1>
-        <a href="{{ url_for('logout') }}" style="color: white;">Cerrar Sesión</a>
+        <a href="{{ url_for('logout') }}">Cerrar Sesión</a>
     </div>
     <div class="container">
         <h2>Usuarios Registrados</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Nombre de Usuario</th>
-                    <th>Nombre Completo</th>
-                    <th>Correo</th>
-                    <th>Rol</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for user in users %}
-                <tr>
-                    <td>{{ user.id }}</td>
-                    <td>{{ user.username }}</td>
-                    <td>{{ user.nombres }} {{ user.apellidos }}</td>
-                    <td>{{ user.correo }}</td>
-                    <td>{{ user.rol }}</td>
-                    <td>
-                        <a href="{{ url_for('admin_user_detail', user_id=user.id) }}">Gestionar</a>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Username</th>
+                        <th>Nombres</th>
+                        <th>Apellidos</th>
+                        <th>Correo</th>
+                        <th>Area</th>
+                        <th>Cargo</th>
+                        <th>Rol</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr>
+                        <td>{{ user.id }}</td>
+                        <td>{{ user.username }}</td>
+                        <td>{{ user.nombres }}</td>
+                        <td>{{ user.apellidos }}</td>
+                        <td>{{ user.correo }}</td>
+                        <td>{{ user.area }}</td>
+                        <td>{{ user.cargo }}</td>
+                        <td>{{ user.rol }}</td>
+                        <td class="actions">
+                            <a href="{{ url_for('admin_user_detail', user_id=user.id) }}">Editar / Gestionar</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 </body>
 </html>
