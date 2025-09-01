@@ -1,6 +1,6 @@
 
-from src import create_app
 import os
+from src import create_app
 
 # Obtener la configuración del entorno o usar la de desarrollo por defecto
 env = os.getenv('FLASK_ENV', 'development')

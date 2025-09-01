@@ -46,7 +46,7 @@
 <body>
     <div class="header">
         <h1>Gestionando a {{ user.username }}</h1>
-        <a href="{{ url_for('admin_dashboard') }}">Volver al Dashboard</a>
+        <a href="{{ url_for('admin.admin_dashboard') }}">Volver al Dashboard</a>
     </div>
 
     <div class="container">
@@ -178,7 +178,7 @@
         document.getElementById('save-rest-days').addEventListener('click', async () => {
             const datesArray = Array.from(selectedDates);
             try {
-                const response = await fetch("{{ url_for('set_rest_days', user_id=user.id) }}", {
+                const response = await fetch("{{ url_for('admin.set_rest_days', user_id=user.id) }}", {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ fechas: datesArray })

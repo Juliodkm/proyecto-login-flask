@@ -303,7 +303,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const imgDataUrl = canvas.toDataURL('image/jpeg');
 
             try {
-                const response = await fetch('{{ url_for("checkin") }}', {
+                const response = await fetch('{{ url_for("main.checkin") }}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
